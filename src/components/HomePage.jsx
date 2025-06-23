@@ -7,6 +7,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 function HomePage() {
   const [state, setState] = useState({});
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   let controls = null;
   let camera = null;
   let renderer = null;
@@ -19,7 +20,7 @@ function HomePage() {
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(
       50,
-      canvasRef.current.clientWidth / canvasRef.current.clientHeight,
+      containerRef.current.clientWidth / containerRef.current.clientHeight,
       0.1,
       1000,
     );
@@ -32,9 +33,10 @@ function HomePage() {
       alpha: true,
     });
     renderer.setSize(
-      canvasRef.current.clientWidth,
-      canvasRef.current.clientHeight,
+      containerRef.current.clientWidth,
+      containerRef.current.clientHeight,
     );
+    renderer.setPixelRatio(window.devicePixelRatio);
 
     // Add lighting
     light = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
@@ -103,33 +105,53 @@ function HomePage() {
     );
   }
 
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function handleResize() {
+    const newWidth = containerRef.current.clientWidth;
+    const newHeight = containerRef.current.clientHeight;
+
+    camera.aspect = newWidth / newHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(newWidth, newHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+  }
+
   useEffect(() => {
     initScene();
 
-    const preventDefaults = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
+    // stop default drag behavior
     ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
       window.addEventListener(eventName, preventDefaults, false);
     });
+
+    // listen to window resize
+    window.addEventListener("resize", handleResize);
 
     return () => {
       ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
         window.removeEventListener(eventName, preventDefaults, false);
       });
+      window.removeEventListener("resize", handleResize);
+      renderer.dispose();
     };
   }, []);
 
   return (
     <div className={styles["home-page"]}>
-      <canvas
-        ref={canvasRef}
-        className={styles["canvas"]}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleDrop}
-      ></canvas>
+      <div ref={containerRef} className={styles["container"]}>
+        <canvas
+          ref={canvasRef}
+          className={styles["canvas"]}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}
+        ></canvas>
+      </div>
+
       <div className={styles["tips"]}>Drag glb file to view it</div>
       <div className={styles["header"]}>3D viewer</div>
     </div>
